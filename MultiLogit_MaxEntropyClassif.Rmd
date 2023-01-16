@@ -1,0 +1,191 @@
+---
+title: "MultiLogit_MaxEntropyClassif"
+output: html_document
+date: "2023-01-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Multinomial Logit analysys or Maximun Entropy Classifier
+
+
+## 1) First way: Multinomial logit analysis by  proportional hazard regression model 
+
+```{r}
+library(survival)
+choco_candy<-read.csv("C:\\Users\\Leobardo\\Documents\\GitHub\\MultiLogit_MaxEntropyClassif\\choco_candy.csv")
+```
+
+
+Coef: Multinomial Logit Parameter Estimates
+
+se(coef): Estandard Error
+
+Chi-Square: z^2
+
+Pr > ChiSq: Pr(>|z|)
+
+
+
+```{r}
+output1<-coxph(Surv(Subj,Choice)~Dark+Soft+Nuts, data=choco_candy,
+               ties="breslow")
+summary(output1)
+```
+
+## Probability of choice
+
+To get the probabilities of each alternative
+
+
+
+
+```{r}
+predict(output1)
+```
+
+Alternatives and predicted value (exponential)
+
+```{r}
+exp_p<- cbind(choco_candy$Alt, data.frame(exp(predict(output1))))[1:8,]
+exp_p
+```
+
+Rename variables
+
+
+```{r}
+names(exp_p)[1]<-"Alt"
+names(exp_p)[2]<-"Exp"
+```
+
+
+Calculating probability of choice:
+
+$$p(c_i|C)=\frac{exp(x_i\beta)}{\sum _{j=1}^mexp(x_j\beta)}$$
+
+```{r}
+exp_p$prob<-exp_p$Exp/sum(exp_p$Exp)
+exp_p$prob
+```
+
+change the order of the probability of choice:
+
+Choice of chocolate candies
+
+```{r}
+exp_p[c(order(-exp_p$prob)),]
+```
+
+
+
+
+## 2) Second way: Multinomial logit analysis by mlogit
+
+```{r}
+library(mlogit)
+```
+
+Understanding data structure
+
+```{r}
+head(choco_candy)
+```
+
+convert choco_candy data to a mlogit data format
+
+```{r}
+TM<-mlogit.data(choco_candy,choice="Choice", shape="long",
+                chid.var="Subj", alt.var="Alt", drop.index=TRUE)
+
+TM
+```
+
+
+We need to add 0 because we do not have an intercept, if not, there is an error.
+
+```{r}
+output2<-mlogit(Choice ~ 0 + Dark+Soft+Nuts, data=TM)
+summary(output2)
+```
+
+
+## Probability of choice
+
+To get the probabilities of each alternative
+
+
+
+
+```{r}
+predict(output2)
+```
+
+Alternatives and predicted value (exponential)
+
+```{r}
+exp_p<- cbind(choco_candy$Alt, data.frame(exp(predict(output2))))[1:8,]
+exp_p
+```
+
+Rename variables
+
+
+```{r}
+names(exp_p)[1]<-"Alt"
+names(exp_p)[2]<-"Exp"
+```
+
+
+Calculating probability of choice:
+
+$$p(c_i|C)=\frac{exp(x_i\beta)}{\sum _{j=1}^mexp(x_j\beta)}$$
+
+```{r}
+exp_p$prob<-exp_p$Exp/sum(exp_p$Exp)
+exp_p$prob
+```
+
+change the order of the probability of choice:
+
+Choice of chocolate candies
+
+```{r}
+exp_p[c(order(-exp_p$prob)),]
+```
+
+
+
+## 3) Third way. Rchoice library
+
+```{r}
+library(Rchoice)
+```
+
+```{r}
+output3<-Rchoice(Choice ~ 0 + Dark + Soft + Nuts, data = TM, 
+                 family =binomial("logit") )
+summary(output3)
+```
+## Coefficients
+
+
+
+
+```{r}
+coef<-output3$coefficients
+coef
+```
+
+```{r}
+coef_percent<-(exp(coef)-1)*100
+coef_percent
+```
+
+
+
+
+
+
